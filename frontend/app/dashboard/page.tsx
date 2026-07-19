@@ -57,6 +57,8 @@ export default function DashboardPage() {
     try {
       const data = await subjectsAPI.getAll();
       setSubjects(data);
+      console.log(data);
+      
     } catch (error: any) {
       toast.error("Failed to load subjects");
     } finally {
