@@ -1,0 +1,51 @@
+# ============================================
+# SIMPLIFIED INSTALLATION (Python 3.13)
+# Let pip resolve versions automatically
+# ============================================
+
+# Core Framework
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+
+# Database
+motor>=3.5
+pymongo>=4.8,<4.10
+beanie>=1.26
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+
+# RAG & LLM
+langchain>=0.3
+langchain-community>=0.3
+langchain-google-genai>=2.0
+sentence-transformers>=3.0
+pinecone>=5.0
+
+# PDF Processing
+pypdf
+pymupdf
+pdfplumber
+
+# AI
+google-generativeai>=0.8
+
+# Utilities
+python-magic-bin
+pillow
+python-docx
+markdown
+jinja2
+
+# Export
+reportlab
+fpdf2
+
+# Monitoring
+loguru
+sentry-sdk

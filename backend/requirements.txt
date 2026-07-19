@@ -1,0 +1,56 @@
+# ============================================
+# PYTHON 3.13 COMPATIBLE VERSIONS
+# ============================================
+
+# FastAPI
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+pydantic==2.10.3
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# Database - MongoDB
+motor==3.6.0
+pymongo==4.9.1
+beanie==1.27.0
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-dotenv==1.0.1
+
+# RAG & LLM
+langchain==0.3.13
+langchain-community==0.3.13
+langchain-google-genai==2.0.6
+sentence-transformers==3.3.1
+pinecone==5.0.1
+
+# PDF Processing
+pypdf==5.1.0
+pymupdf==1.24.14
+pdfplumber==0.11.4
+
+# AI & ML
+# openai==1.57.4  # OPTIONAL - Uncomment if using OpenAI
+google-generativeai==0.8.3
+
+# Utilities (OPTIONAL - commented out)
+# redis==5.2.0  # Uncomment if using caching
+# celery==5.4.0  # Uncomment if using background tasks
+python-magic-bin==0.4.14
+pillow==11.0.0
+python-docx==1.1.2
+markdown==3.7
+jinja2==3.1.4
+
+# Export
+reportlab==4.2.5
+fpdf2==2.8.1
+
+# Monitoring
+loguru==0.7.2
+sentry-sdk==2.18.0
