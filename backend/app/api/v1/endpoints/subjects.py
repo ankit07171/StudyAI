@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from datetime import datetime
 from loguru import logger
+from beanie import PydanticObjectId
 
 from app.core.security import get_current_active_user
 from app.models.user import User
@@ -123,7 +124,7 @@ async def get_subject(
     """Get a specific subject"""
     try:
         subject = await Subject.find_one(
-            Subject.id == subject_id,
+            Subject.id == PydanticObjectId(subject_id),
             Subject.user_id == str(current_user.id)
         )
         

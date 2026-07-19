@@ -45,19 +45,18 @@ export default function SubjectDetailPage() {
     loadSubject();
   }, [subjectId]);
 
-  const loadSubject = async () => {
-    try {
-      const data = await subjectsAPI.getOne(subjectId);
-      setSubject(data);
-      // console.log();
-      
-    } catch (error: any) {
-      toast.error("Failed to load subject");
-      router.push("/dashboard");
-    } finally {
-      setLoading(false);
-    }
-  };
+ const loadSubject = async () => {
+  try {
+    const data = await subjectsAPI.getOne(subjectId);
+    setSubject(data);
+  } catch (error: any) {
+    console.error("Subject load error:", error.response?.status, error.response?.data, error.message);
+    toast.error(error.response?.data?.detail || "Failed to load subject");
+    router.push("/dashboard");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this subject? This action cannot be undone.")) {
