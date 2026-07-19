@@ -19,6 +19,7 @@ from app.api.v1.endpoints import (
     bookmarks,
     notifications,
 )
+# from app.api.files import router as files_router
 
 api_router = APIRouter()
 

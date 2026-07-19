@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -15,7 +15,7 @@ import {
   Trash2,
   Edit,
 } from "lucide-react";
-import { subjectsAPI } from "@/lib/api";
+import { subjectsAPI , filesAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -44,6 +44,42 @@ export default function SubjectDetailPage() {
   useEffect(() => {
     loadSubject();
   }, [subjectId]);
+
+const [uploading, setUploading] = useState(false);
+const [dragActive, setDragActive] = useState(false);
+const fileInputRef = useRef<HTMLInputElement>(null);
+
+const handleFiles = async (files: FileList | null) => {
+  if (!files || files.length === 0) return;
+
+  for (const file of Array.from(files)) {
+    if (file.type !== "application/pdf") {
+      toast.error(`${file.name} is not a PDF`);
+      continue;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error(`${file.name} exceeds 50MB`);
+      continue;
+    }
+
+    setUploading(true);
+    try {
+      await filesAPI.upload(subjectId, file);
+      toast.success(`${file.name} uploaded`);
+      await loadSubject(); // refresh stats (total_pdfs etc.)
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || `Failed to upload ${file.name}`);
+    } finally {
+      setUploading(false);
+    }
+  }
+};
+
+const handleDrop = (e: React.DragEvent) => {
+  e.preventDefault();
+  setDragActive(false);
+  handleFiles(e.dataTransfer.files);
+};
 
  const loadSubject = async () => {
   try {
@@ -188,14 +224,35 @@ export default function SubjectDetailPage() {
             <CardDescription>Upload PDF files to chat with and generate study materials</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
-              <Upload className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">Drag and drop PDF files here, or click to browse</p>
-              <p className="text-sm text-slate-500">Maximum file size: 50MB</p>
-              <button className="mt-4 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all">
-                Select Files
-              </button>
-            </div>
+          <div
+  onClick={() => fileInputRef.current?.click()}
+  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+  onDragLeave={() => setDragActive(false)}
+  onDrop={handleDrop}
+  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+    dragActive ? "border-blue-500 bg-blue-500/5" : "border-slate-700 hover:border-blue-500"
+  }`}
+>
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept="application/pdf"
+    multiple
+    className="hidden"
+    onChange={(e) => handleFiles(e.target.files)}
+  />
+  <Upload className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+  <p className="text-slate-400 mb-2">Drag and drop PDF files here, or click to browse</p>
+  <p className="text-sm text-slate-500">Maximum file size: 50MB</p>
+  <button
+    type="button"
+    disabled={uploading}
+    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+    className="mt-4 px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50"
+  >
+    {uploading ? "Uploading..." : "Select Files"}
+  </button>
+</div>
           </CardContent>
         </Card>
 

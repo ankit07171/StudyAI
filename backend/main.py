@@ -12,6 +12,8 @@ import time
 from app.core.config import settings
 from app.core.database import connect_to_mongodb, close_mongodb_connection
 from app.api.v1.api import api_router
+# from app.api.subjects import router as subjects_router
+# from app.api.auth import router as auth_router
 
 # Configure logger
 logger.add(
@@ -86,8 +88,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Include API routes
+# app.include_router(api_router, prefix=f"/api/{settings.API_VERSION}")
 app.include_router(api_router, prefix=f"/api/{settings.API_VERSION}")
-
+# app.include_router(files_router, prefix="/api/v1/files")
 
 @app.get("/")
 async def root():
