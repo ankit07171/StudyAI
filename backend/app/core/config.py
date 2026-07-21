@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 200
     
     # LLM
-    DEFAULT_LLM: str = "gemini-2.0-flash-exp"
+    DEFAULT_LLM: str = "gemini-3.1-flash-lite"
     DEFAULT_TEMPERATURE: float = 0.7
     MAX_TOKENS: int = 4096
     

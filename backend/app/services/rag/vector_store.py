@@ -108,7 +108,7 @@ class VectorStoreService:
     def query(
         self,
         query_text: str,
-        subject_id: int,
+        subject_id: str,
         top_k: int = 5,
         filter_dict: Optional[Dict] = None
     ) -> List[Dict]:

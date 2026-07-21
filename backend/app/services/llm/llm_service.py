@@ -2,8 +2,10 @@
 LLM Service for AI generation
 """
 from typing import Optional, Dict, List
-import google.generativeai as genai
 from loguru import logger
+
+from google import genai
+from google.genai import types
 
 from app.core.config import settings
 
@@ -14,19 +16,18 @@ from app.core.config import settings
 
 class LLMService:
     """Unified LLM service supporting multiple providers"""
-    
+
     def __init__(self):
         """Initialize LLM clients"""
         self.default_provider = settings.DEFAULT_LLM
-        
+
         # Initialize Google Gemini (REQUIRED)
         if settings.GOOGLE_API_KEY:
-            genai.configure(api_key=settings.GOOGLE_API_KEY)
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
             logger.info("Initialized Google Gemini")
         else:
             raise ValueError("GOOGLE_API_KEY is required in .env file")
-        
+
         # Initialize OpenAI (OPTIONAL)
         # Uncomment if you have OPENAI_API_KEY configured
         # if settings.OPENAI_API_KEY:
@@ -34,7 +35,7 @@ class LLMService:
         #     logger.info("Initialized OpenAI")
         # else:
         #     self.openai_client = None
-    
+
     def generate(
         self,
         prompt: str,
@@ -45,31 +46,31 @@ class LLMService:
     ) -> str:
         """
         Generate text using LLM
-        
+
         Args:
             prompt: User prompt
             system_prompt: System instruction
             temperature: Sampling temperature
             max_tokens: Maximum tokens to generate
             provider: LLM provider (gemini, openai, or None for default)
-            
+
         Returns:
             Generated text
         """
         try:
             provider = provider or self.default_provider
-            
+
             if 'gemini' in provider.lower():
                 return self._generate_gemini(prompt, system_prompt, temperature, max_tokens)
             elif 'gpt' in provider.lower() or 'openai' in provider.lower():
                 return self._generate_openai(prompt, system_prompt, temperature, max_tokens)
             else:
                 return self._generate_gemini(prompt, system_prompt, temperature, max_tokens)
-                
+
         except Exception as e:
             logger.error(f"Error generating with LLM: {e}")
             raise
-    
+
     def _generate_gemini(
         self,
         prompt: str,
@@ -79,27 +80,25 @@ class LLMService:
     ) -> str:
         """Generate using Google Gemini"""
         try:
-            # Combine system prompt with user prompt
-            if system_prompt:
-                full_prompt = f"{system_prompt}\n\n{prompt}"
-            else:
-                full_prompt = prompt
-            
-            # Generate response
-            response = self.gemini_model.generate_content(
-                full_prompt,
-                generation_config=genai.GenerationConfig(
+            response = self.client.models.generate_content(
+                model="gemini-3.1-flash-lite",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
                     temperature=temperature,
                     max_output_tokens=max_tokens,
                 )
             )
-            
-            return response.text
-            
+            text = response.text
+            text = text.replace('**', '').replace('* ', '')
+            return text
+
+            # return response.text
+
         except Exception as e:
             logger.error(f"Error with Gemini: {e}")
             raise
-    
+
     def _generate_openai(
         self,
         prompt: str,
@@ -110,17 +109,17 @@ class LLMService:
         """Generate using OpenAI (OPTIONAL - requires openai package and API key)"""
         # Uncomment if you want to use OpenAI
         raise NotImplementedError("OpenAI support is disabled. Enable it in llm_service.py if needed.")
-        
+
         # Uncomment below and install openai package to enable:
         # try:
         #     if not hasattr(self, 'openai_client') or self.openai_client is None:
         #         raise ValueError("OpenAI client not initialized. Add OPENAI_API_KEY to .env")
-        #     
+        #
         #     messages = []
         #     if system_prompt:
         #         messages.append({"role": "system", "content": system_prompt})
         #     messages.append({"role": "user", "content": prompt})
-        #     
+        #
         #     response = self.openai_client.chat.completions.create(
         #         model="gpt-4-turbo-preview",
         #         messages=messages,
@@ -131,7 +130,7 @@ class LLMService:
         # except Exception as e:
         #     logger.error(f"Error with OpenAI: {e}")
         #     raise
-    
+
     def generate_with_context(
         self,
         query: str,
@@ -141,13 +140,13 @@ class LLMService:
     ) -> str:
         """
         Generate response with RAG context
-        
+
         Args:
             query: User query
             context: Retrieved context
             chat_history: Previous chat messages
             temperature: Sampling temperature
-            
+
         Returns:
             Generated response
         """
@@ -162,7 +161,7 @@ Guidelines:
 - Provide examples and explanations when helpful
 - Be concise but thorough
 - Reference specific concepts from the materials when relevant"""
-            
+
             # Build user prompt with context
             user_prompt = f"""Context from study materials:
 {context}
@@ -170,25 +169,25 @@ Guidelines:
 Question: {query}
 
 Please provide a detailed answer based on the context above."""
-            
+
             # Add chat history if available
             if chat_history:
                 history_text = "\n".join([
-                    f"{msg['role']}: {msg['content']}" 
+                    f"{msg['role']}: {msg['content']}"
                     for msg in chat_history[-3:]  # Last 3 messages
                 ])
                 user_prompt = f"Previous conversation:\n{history_text}\n\n{user_prompt}"
-            
+
             return self.generate(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
                 temperature=temperature
             )
-            
+
         except Exception as e:
             logger.error(f"Error generating with context: {e}")
             raise
-    
+
     def stream_generate(
         self,
         prompt: str,
@@ -197,32 +196,29 @@ Please provide a detailed answer based on the context above."""
     ):
         """
         Generate text with streaming (for real-time responses)
-        
+
         Args:
             prompt: User prompt
             system_prompt: System instruction
             temperature: Sampling temperature
-            
+
         Yields:
             Text chunks
         """
         try:
-            if system_prompt:
-                full_prompt = f"{system_prompt}\n\n{prompt}"
-            else:
-                full_prompt = prompt
-            
-            # Use Gemini for streaming
-            response = self.gemini_model.generate_content(
-                full_prompt,
-                generation_config=genai.GenerationConfig(temperature=temperature),
-                stream=True
+            response = self.client.models.generate_content_stream(
+                model="gemini-3.1-flash-lite",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=temperature,
+                )
             )
-            
+
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
-                    
+
         except Exception as e:
             logger.error(f"Error streaming: {e}")
             raise

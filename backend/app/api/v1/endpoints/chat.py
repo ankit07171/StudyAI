@@ -51,7 +51,7 @@ async def send_message(
         # Retrieve relevant content from vector store
         retrieved_docs = vector_store.query(
             query_text=request.message,
-            subject_id=int(request.subject_id),
+            subject_id= request.subject_id,
             top_k=5
         )
         
