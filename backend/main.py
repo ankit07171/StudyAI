@@ -12,6 +12,7 @@ import time
 from app.core.config import settings
 from app.core.database import connect_to_mongodb, close_mongodb_connection
 from app.api.v1.api import api_router
+
 # from app.api.subjects import router as subjects_router
 # from app.api.auth import router as auth_router
 

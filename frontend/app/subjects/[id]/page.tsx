@@ -141,6 +141,36 @@ const chatAPI = {
   },
 };
 
+const flashcardsAPI = {
+  generate: async (subjectId: string, data: any) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/flashcards/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ ...data, subject_id: subjectId }),
+    });
+    if (!response.ok) throw new Error("Failed to generate flashcards");
+    return response.json();
+  },
+  getAll: async (subjectId: string) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/flashcards/subject/${subjectId}`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Failed to fetch flashcards");
+    return response.json();
+  },
+  review: async (cardId: string, remembered: boolean) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/flashcards/${cardId}/review?remembered=${remembered}`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Failed to update flashcard");
+    return response.json();
+  },
+};
+
 interface Subject {
   id: string;
   name: string;
@@ -189,6 +219,17 @@ export default function SubjectDetailPage() {
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [questionForm, setQuestionForm] = useState({ question_count: 15 });
+
+
+  // Flashcards state
+const [flashcards, setFlashcards] = useState<any[]>([]);
+const [flashcardsLoading, setFlashcardsLoading] = useState(false);
+const [showFlashcardGenModal, setShowFlashcardGenModal] = useState(false);
+const [flashcardForm, setFlashcardForm] = useState({ card_count: 15, topic: "" });
+const [studyMode, setStudyMode] = useState(false);
+const [currentCardIndex, setCurrentCardIndex] = useState(0);
+const [isFlipped, setIsFlipped] = useState(false);
+
 
   useEffect(() => {
     loadSubject();
@@ -409,11 +450,87 @@ const handleDrop = (e: React.DragEvent) => {
   }
 };
 
+const flashcardsAPI = {
+  generate: async (subjectId: string, data: any) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/flashcards/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ ...data, subject_id: subjectId }),
+    });
+    if (!response.ok) throw new Error("Failed to generate flashcards");
+    return response.json();
+  },
+  getAll: async (subjectId: string) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/flashcards/subject/${subjectId}`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Failed to fetch flashcards");
+    return response.json();
+  },
+  review: async (cardId: string, remembered: boolean) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/flashcards/${cardId}/review?remembered=${remembered}`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Failed to update flashcard");
+    return response.json();
+  },
+};
+const loadFlashcards = async () => {
+  setFlashcardsLoading(true);
+  try {
+    const data = await flashcardsAPI.getAll(subjectId);
+    setFlashcards(data);
+  } catch (error: any) {
+    console.error("Failed to load flashcards:", error);
+    toast.error("Failed to load flashcards");
+  } finally {
+    setFlashcardsLoading(false);
+  }
+};
+
+const handleGenerateFlashcards = async () => {
+  setFlashcardsLoading(true);
+  try {
+    await flashcardsAPI.generate(subjectId, flashcardForm);
+    toast.success("Flashcards generated successfully!");
+    setShowFlashcardGenModal(false);
+    setFlashcardForm({ card_count: 15, topic: "" });
+    loadFlashcards();
+    loadSubject();
+  } catch (error: any) {
+    toast.error(error.message || "Failed to generate flashcards");
+  } finally {
+    setFlashcardsLoading(false);
+  }
+};
+
+const handleCardResponse = async (remembered: boolean) => {
+  const card = flashcards[currentCardIndex];
+  try {
+    await flashcardsAPI.review(card.id, remembered);
+  } catch (error: any) {
+    console.error("Failed to record review:", error);
+  }
+  setIsFlipped(false);
+  if (currentCardIndex < flashcards.length - 1) {
+    setCurrentCardIndex(currentCardIndex + 1);
+  } else {
+    setStudyMode(false);
+    setCurrentCardIndex(0);
+    toast.success("Deck complete!");
+  }
+};
+
   useEffect(() => {
     if (activeTab === "notes") loadNotes();
     if (activeTab === "quiz") loadQuizzes();
     if (activeTab === "questions") loadImportantQuestions();
     if (activeTab === "chat") loadChatHistory();
+    if (activeTab === "flashcards") loadFlashcards();
   }, [activeTab]);
 
   if (loading) {
@@ -807,15 +924,92 @@ const handleDrop = (e: React.DragEvent) => {
               )}
 
               {activeTab === "flashcards" && (
-                <div className="text-center py-16">
-                  <BookOpen className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Study with Flashcards</h3>
-                  <p className="text-slate-400 mb-6">Spaced repetition flashcards for better retention</p>
-                  <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all">
-                    Generate Flashcards (Coming Soon)
-                  </button>
+  <div className="space-y-4">
+    {!studyMode ? (
+      <>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-white">Flashcards</h3>
+          <div className="flex gap-2">
+            {flashcards.length > 0 && (
+              <button
+                onClick={() => { setStudyMode(true); setCurrentCardIndex(0); setIsFlipped(false); }}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+              >
+                Study Deck
+              </button>
+            )}
+            <button
+              onClick={() => setShowFlashcardGenModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all"
+            >
+              Generate Flashcards
+            </button>
+          </div>
+        </div>
+        {flashcardsLoading ? (
+          <div className="text-center py-8">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
+          </div>
+        ) : flashcards.length === 0 ? (
+          <div className="text-center py-16">
+            <BookOpen className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-white mb-2">Study with Flashcards</h3>
+            <p className="text-slate-400 mb-6">Spaced repetition flashcards for better retention</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {flashcards.map((card) => (
+              <div key={card.id} className="p-4 bg-slate-800 rounded-xl">
+                <p className="font-medium text-white text-sm mb-2">{card.front}</p>
+                <div className="flex gap-2 text-xs text-slate-400">
+                  <span className="px-2 py-1 bg-slate-700 rounded">{card.difficulty}</span>
+                  {card.is_mastered && <span className="px-2 py-1 bg-green-700/50 rounded">Mastered</span>}
                 </div>
-              )}
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    ) : (
+      <div className="flex flex-col items-center py-8">
+        <p className="text-sm text-slate-400 mb-4">
+          Card {currentCardIndex + 1} of {flashcards.length}
+        </p>
+        <div
+          onClick={() => setIsFlipped(!isFlipped)}
+          className="w-full max-w-lg h-64 bg-slate-800 rounded-2xl border border-slate-700 flex items-center justify-center p-8 cursor-pointer hover:border-blue-500 transition-colors"
+        >
+          <p className="text-lg text-white text-center">
+            {isFlipped ? flashcards[currentCardIndex].back : flashcards[currentCardIndex].front}
+          </p>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">Click card to flip</p>
+        {isFlipped && (
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={() => handleCardResponse(false)}
+              className="px-6 py-3 bg-red-500/20 text-red-400 rounded-xl font-medium hover:bg-red-500/30 transition-colors"
+            >
+              Didn't Know
+            </button>
+            <button
+              onClick={() => handleCardResponse(true)}
+              className="px-6 py-3 bg-green-500/20 text-green-400 rounded-xl font-medium hover:bg-green-500/30 transition-colors"
+            >
+              Knew It
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => setStudyMode(false)}
+          className="mt-6 text-sm text-slate-400 hover:text-white"
+        >
+          Exit Study Mode
+        </button>
+      </div>
+    )}
+  </div>
+)}
             </CardContent>
           </Card>
         </motion.div>
@@ -1017,6 +1211,53 @@ const handleDrop = (e: React.DragEvent) => {
           </div>
         </div>
       )}
+    </div>
+  </div>
+)}
+
+{/* Flashcard Generation Modal */}
+{showFlashcardGenModal && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 w-full max-w-md">
+      <h2 className="text-2xl font-bold text-white mb-4">Generate Flashcards</h2>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Number of Cards</label>
+          <input
+            type="number"
+            value={flashcardForm.card_count}
+            onChange={(e) => setFlashcardForm({ ...flashcardForm, card_count: parseInt(e.target.value) })}
+            min="1"
+            max="50"
+            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Topic (optional)</label>
+          <input
+            type="text"
+            value={flashcardForm.topic}
+            onChange={(e) => setFlashcardForm({ ...flashcardForm, topic: e.target.value })}
+            placeholder="e.g., Chapter 3 terms"
+            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={() => setShowFlashcardGenModal(false)}
+            className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleGenerateFlashcards}
+            disabled={flashcardsLoading}
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50"
+          >
+            {flashcardsLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Generate"}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 )}
