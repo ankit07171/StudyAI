@@ -586,7 +586,7 @@ const handleDrop = (e: React.DragEvent) => {
                 : "bg-slate-800 text-slate-400 hover:bg-slate-700"
             }`}
           >
-            <FileText className="w-4 h-4" />
+         <FileText className="w-4 h-4" />
             Notes
           </button>
           <button
@@ -877,9 +877,9 @@ const handleDrop = (e: React.DragEvent) => {
           <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white">{selectedNote.title}</h2>
-              <button onClick={() => setShowNoteModal(false)} className="text-slate-400 hover:text-white">
-                ✕
-              </button>
+              <button onClick={() => {setSelectedNote(null);setShowNoteModal(false);}} className="text-slate-400 hover:text-white">
+  ✕
+</button>
             </div>
             <div className="prose prose-invert max-w-none text-white">
               <div className="whitespace-pre-wrap">{selectedNote.content}</div>

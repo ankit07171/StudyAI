@@ -57,7 +57,7 @@ async def generate_notes(
         query_text = "complete content concepts definitions examples formulas key topics explanations"
         retrieved_docs = vector_store.query(
             query_text=query_text,
-            subject_id=int(request.subject_id),
+            subject_id=request.subject_id,
             top_k=50
         )
         

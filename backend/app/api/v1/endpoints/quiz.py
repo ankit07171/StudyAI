@@ -61,7 +61,7 @@ async def generate_quiz(
         query_text = "important concepts definitions formulas examples key topics"
         retrieved_docs = vector_store.query(
             query_text=query_text,
-            subject_id=int(request.subject_id),
+            subject_id=request.subject_id,
             top_k=30
         )
         
