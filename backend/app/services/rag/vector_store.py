@@ -49,8 +49,8 @@ class VectorStoreService:
         self,
         chunks: List[Dict],
         user_id: int,
-        subject_id: int,
-        file_id: int,
+        subject_id: str,
+        file_id: str,
         filename: str
     ) -> List[str]:
         """
@@ -150,7 +150,7 @@ class VectorStoreService:
                     'text': match['metadata'].get('text', ''),
                     'page_number': match['metadata'].get('page_number', 0),
                     'filename': match['metadata'].get('filename', ''),
-                    'file_id': match['metadata'].get('file_id', 0),
+                    'file_id': str(match['metadata'].get('file_id', '')),
                     'chunk_type': match['metadata'].get('chunk_type', 'text'),
                 })
             
@@ -160,7 +160,7 @@ class VectorStoreService:
             logger.error(f"Error querying vector store: {e}")
             return []
     
-    def delete_by_file(self, file_id: int) -> bool:
+    def delete_by_file(self, file_id: str) -> bool:
         """
         Delete all vectors for a specific file
         
