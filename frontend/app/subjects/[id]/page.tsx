@@ -360,30 +360,30 @@ const handleDrop = (e: React.DragEvent) => {
     }
   };
 
-  const handleViewQuiz = async (quizId: string) => {
-    try {
-      const questions = await quizAPI.getQuestions(quizId);
-      const quiz = quizzes.find(q => q.id === quizId);
-      setSelectedQuiz(quiz);
-      setQuizQuestions(questions);
-      setShowQuizModal(true);
-    } catch (error: any) {
-      toast.error("Failed to load quiz");
-    }
-  };
+ const handleViewQuiz = async (quizId: string) => {
+  try {
+    const questions = await quizAPI.getQuestions(quizId);
+    const quiz = quizzes.find(q => q.id === quizId);
+    setSelectedQuiz(quiz);
+    setQuizQuestions(questions);
+  } catch (error: any) {
+    toast.error("Failed to load quiz");
+  }
+};
 
   // Important Questions handlers
   const loadImportantQuestions = async () => {
-    setQuestionsLoading(true);
-    try {
-      const data = await questionsAPI.getAll(subjectId);
-      setImportantQuestions(data);
-    } catch (error: any) {
-      console.error("Failed to load questions:", error);
-    } finally {
-      setQuestionsLoading(false);
-    }
-  };
+  setQuestionsLoading(true);
+  try {
+    const data = await questionsAPI.getAll(subjectId);
+    setImportantQuestions(data);
+  } catch (error: any) {
+    console.error("Failed to load questions:", error);
+    toast.error("Failed to load important questions");
+  } finally {
+    setQuestionsLoading(false);
+  }
+};
 
   const handleGenerateQuestions = async () => {
     setQuestionsLoading(true);
@@ -400,15 +400,14 @@ const handleDrop = (e: React.DragEvent) => {
     }
   };
 
-  const handleViewQuestion = async (questionId: string) => {
-    try {
-      const question = await questionsAPI.getOne(questionId);
-      setSelectedQuestion(question);
-      setShowQuestionModal(true);
-    } catch (error: any) {
-      toast.error("Failed to load question");
-    }
-  };
+ const handleViewQuestion = async (questionId: string) => {
+  try {
+    const question = await questionsAPI.getOne(questionId);
+    setSelectedQuestion(question);
+  } catch (error: any) {
+    toast.error("Failed to load question");
+  }
+};
 
   useEffect(() => {
     if (activeTab === "notes") loadNotes();
@@ -934,9 +933,94 @@ const handleDrop = (e: React.DragEvent) => {
           </div>
         </div>
       )}
+      {/* Quiz View Modal */}
+{selectedQuiz && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white">{selectedQuiz.title}</h2>
+          <p className="text-sm text-slate-400">
+            {selectedQuiz.question_count} questions • {selectedQuiz.total_marks} marks
+          </p>
+        </div>
+        <button
+          onClick={() => { setSelectedQuiz(null); setQuizQuestions([]); }}
+          className="text-slate-400 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="space-y-4">
+        {quizQuestions.map((q, idx) => (
+          <div key={q.id || idx} className="p-4 bg-slate-900/50 rounded-xl">
+            <p className="font-medium text-white mb-2">
+              {idx + 1}. {q.question_text}
+            </p>
+            {q.options && (
+              <ul className="space-y-1 mb-2">
+                {q.options.map((opt: string, i: number) => (
+                  <li key={i} className="text-sm text-slate-300 pl-3">
+                    • {opt}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2 text-xs text-slate-400">
+              <span className="px-2 py-1 bg-slate-700 rounded">{q.marks} marks</span>
+              <span className="px-2 py-1 bg-slate-700 rounded">{q.difficulty}</span>
+              {q.topic && <span className="px-2 py-1 bg-slate-700 rounded">{q.topic}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Question Generation Modal */}
-      {showQuestionModal && (
+      {/* Question View Modal */}
+{selectedQuestion && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2 text-xs text-slate-400">
+          <span className="px-2 py-1 bg-slate-700 rounded">{selectedQuestion.marks} marks</span>
+          <span className="px-2 py-1 bg-slate-700 rounded">{selectedQuestion.difficulty}</span>
+          <span className="px-2 py-1 bg-slate-700 rounded">{selectedQuestion.category}</span>
+        </div>
+        <button
+          onClick={() => setSelectedQuestion(null)}
+          className="text-slate-400 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+
+      <h2 className="text-xl font-semibold text-white mb-4">
+        {selectedQuestion.question_text}
+      </h2>
+
+      {(selectedQuestion.topic || selectedQuestion.chapter) && (
+        <p className="text-sm text-slate-400 mb-4">
+          {selectedQuestion.chapter && `Chapter: ${selectedQuestion.chapter}`}
+          {selectedQuestion.chapter && selectedQuestion.topic && " • "}
+          {selectedQuestion.topic && `Topic: ${selectedQuestion.topic}`}
+        </p>
+      )}
+
+      {selectedQuestion.model_answer && (
+        <div className="prose prose-invert max-w-none text-white">
+          <h3 className="text-sm font-semibold text-slate-300 mb-2">Model Answer</h3>
+          <div className="whitespace-pre-wrap bg-slate-900/50 rounded-xl p-4">
+            {selectedQuestion.model_answer}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+      {/* {showQuestionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold text-white mb-4">Generate Important Questions</h2>
@@ -970,7 +1054,7 @@ const handleDrop = (e: React.DragEvent) => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

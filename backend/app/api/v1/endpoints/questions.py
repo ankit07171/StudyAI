@@ -184,6 +184,55 @@ Do not include any text outside the JSON array."""
         )
 
 
+# @router.get("/subject/{subject_id}")
+# async def get_important_questions(
+    # subject_id: str,
+    # marks: Optional[str] = None,
+    # difficulty: Optional[str] = None,
+    # category: Optional[str] = None,
+    # current_user: User = Depends(get_current_active_user)
+# ):
+#     """Get important questions for a subject with optional filters"""
+#     try:
+#         # Verify subject belongs to user
+#         subject = await Subject.get(PydanticObjectId(subject_id))
+#         if not subject or subject.user_id != str(current_user.id):
+#             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
+        
+#         # Build query
+#         query_filter = ImportantQuestion.subject_id == subject_id
+#         query_filter = query_filter & (ImportantQuestion.user_id == str(current_user.id))
+        
+#         if marks:
+#             query_filter = query_filter & (ImportantQuestion.marks == marks)
+#         if difficulty:
+#             query_filter = query_filter & (ImportantQuestion.difficulty == difficulty)
+#         if category:
+#             query_filter = query_filter & (ImportantQuestion.category == category)
+        
+#         questions = await ImportantQuestion.find(
+#             query_filter
+#         ).sort(-ImportantQuestion.generated_at).to_list()
+        
+#         questions_response = []
+#         for q in questions:
+#             q_dict = q.model_dump()
+#             q_dict['id'] = str(q.id)
+#             # Don't send model_answer in list view
+#             q_dict.pop('model_answer', None)
+#             questions_response.append(q_dict)
+        
+#         return questions_response
+        
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Error fetching important questions: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             detail="Failed to fetch important questions"
+#         )
+
 @router.get("/subject/{subject_id}")
 async def get_important_questions(
     subject_id: str,
@@ -194,36 +243,35 @@ async def get_important_questions(
 ):
     """Get important questions for a subject with optional filters"""
     try:
-        # Verify subject belongs to user
         subject = await Subject.get(PydanticObjectId(subject_id))
         if not subject or subject.user_id != str(current_user.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
-        
-        # Build query
-        query_filter = ImportantQuestion.subject_id == subject_id
-        query_filter = query_filter & (ImportantQuestion.user_id == str(current_user.id))
-        
+
+        # Build conditions as a list, passed positionally to find()
+        conditions = [
+            ImportantQuestion.subject_id == subject_id,
+            ImportantQuestion.user_id == str(current_user.id),
+        ]
         if marks:
-            query_filter = query_filter & (ImportantQuestion.marks == marks)
+            conditions.append(ImportantQuestion.marks == marks)
         if difficulty:
-            query_filter = query_filter & (ImportantQuestion.difficulty == difficulty)
+            conditions.append(ImportantQuestion.difficulty == difficulty)
         if category:
-            query_filter = query_filter & (ImportantQuestion.category == category)
-        
+            conditions.append(ImportantQuestion.category == category)
+
         questions = await ImportantQuestion.find(
-            query_filter
+            *conditions
         ).sort(-ImportantQuestion.generated_at).to_list()
-        
+
         questions_response = []
         for q in questions:
             q_dict = q.model_dump()
             q_dict['id'] = str(q.id)
-            # Don't send model_answer in list view
             q_dict.pop('model_answer', None)
             questions_response.append(q_dict)
-        
+
         return questions_response
-        
+
     except HTTPException:
         raise
     except Exception as e:
