@@ -12,6 +12,7 @@ from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.subject import Subject
 from app.models.uploaded_file import UploadedFile
+from app.models.chat_history import ChatHistory
 from app.services.rag.vector_store import vector_store
 from app.services.llm.llm_service import llm_service
 
@@ -29,39 +30,46 @@ async def send_message(
     request: ChatMessageRequest,
     current_user: User = Depends(get_current_active_user)
 ):
-    """Send chat message and get AI response"""
+    """Send chat message, get AI response, and persist both to history"""
     try:
         # Verify subject exists and belongs to user
         subject = await Subject.get(PydanticObjectId(request.subject_id))
         if not subject or subject.user_id != str(current_user.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
-        
+
         # Check if subject has processed files
         processed_files = await UploadedFile.find(
             UploadedFile.subject_id == request.subject_id,
             UploadedFile.is_processed == True
         ).to_list()
-        
+
         if not processed_files:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No processed PDFs found in this subject. Please upload and wait for processing to complete."
             )
-        
+
+        # Save the user's message first
+        user_msg = ChatHistory(
+            subject_id=request.subject_id,
+            user_id=str(current_user.id),
+            role="user",
+            message=request.message,
+        )
+        await user_msg.insert()
+
         # Retrieve relevant content from vector store
         retrieved_docs = vector_store.query(
             query_text=request.message,
-            subject_id= request.subject_id,
+            subject_id=request.subject_id,
             top_k=5
         )
-        
+
         if not retrieved_docs:
-            # If no relevant docs found, still try to answer with general knowledge
             context = "No specific context found in the uploaded materials."
         else:
             context = "\n\n".join([doc['text'] for doc in retrieved_docs])
-        
-        # Build prompt
+
         system_prompt = """You are an AI study assistant helping students understand their study materials.
 Use the provided context from PDFs to answer questions accurately.
 If the context doesn't contain the answer, say so clearly but still try to help based on your general knowledge.
@@ -73,22 +81,32 @@ Be concise, clear, and helpful."""
 Question: {request.message}
 
 Provide a helpful answer based on the context above."""
-        
-        # Generate response using LLM
+
         logger.info(f"Generating chat response for subject {request.subject_id}")
-        response = llm_service.generate(
+        response_text = llm_service.generate(
             prompt=user_prompt,
             system_prompt=system_prompt,
             temperature=0.7,
             max_tokens=1024
         )
-        
+
+        # Save the assistant's response
+        assistant_msg = ChatHistory(
+            subject_id=request.subject_id,
+            user_id=str(current_user.id),
+            role="assistant",
+            message=response_text,
+            context_used=retrieved_docs if retrieved_docs else None,
+        )
+        await assistant_msg.insert()
+
         return {
+            "id": str(assistant_msg.id),
             "role": "assistant",
-            "content": response,
-            "timestamp": datetime.utcnow()
+            "message": response_text,
+            "created_at": assistant_msg.created_at,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -104,17 +122,27 @@ async def get_chat_history(
     subject_id: str,
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get chat history for a subject (placeholder - returns empty list for now)"""
+    """Get chat history for a subject, ordered oldest to newest"""
     try:
-        # Verify subject belongs to user
         subject = await Subject.get(PydanticObjectId(subject_id))
         if not subject or subject.user_id != str(current_user.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
-        
-        # For now, return empty history
-        # In a full implementation, this would fetch from a ChatMessage collection
-        return []
-        
+
+        messages = await ChatHistory.find(
+            ChatHistory.subject_id == subject_id,
+            ChatHistory.user_id == str(current_user.id)
+        ).sort("+created_at").to_list()
+
+        return [
+            {
+                "id": str(m.id),
+                "role": m.role,
+                "message": m.message,
+                "created_at": m.created_at,
+            }
+            for m in messages
+        ]
+
     except HTTPException:
         raise
     except Exception as e:
